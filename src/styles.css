@@ -1,0 +1,317 @@
+:root {
+    --primary-color: #0077be;  /* Blue */
+    --secondary-color: #ff8c00;  /* Orange */
+    --tertiary-color: #006400;  /* Dark Green */
+    --background-color: #f0f0f0;
+    --text-color: #333;
+}
+
+body {
+    font-family: 'Roboto', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h2, h3 {
+    color: var(--tertiary-color);
+}
+
+input[type="text"], select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-left: 5px; /* Add some space between buttons */
+}
+
+button i {
+    margin: 0; /* Remove margin around icons */
+}
+
+button:hover {
+    background-color: var(--secondary-color);
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+li {
+    background-color: white;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.navbar {
+    background-color: var(--tertiary-color);
+    padding: 10px 0;
+}
+
+.navbar button {
+    background-color: transparent;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    margin: 0 5px;
+    font-size: 16px;
+}
+
+.navbar button:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+#searchResults div {
+    background-color: white;
+    margin-bottom: 5px;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 600px) {
+    .container {
+        padding: 10px;
+    }
+
+    input[type="text"], select, button {
+        font-size: 16px;  /* Prevents zoom on focus in iOS */
+    }
+}
+
+/* Add these styles to your existing CSS */
+.edit-btn, .remove-btn {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 0 5px;
+}
+
+.edit-btn:hover, .remove-btn:hover {
+    opacity: 0.7;
+}
+
+#athleteList li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 5px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+}
+
+#athleteList li button {
+    margin-left: 10px;
+}
+
+/* Add these styles to your existing CSS */
+
+#athleteList {
+    list-style-type: none;
+    padding: 0;
+}
+
+#athleteList li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+}
+
+
+#athleteList {
+    list-style-type: none;
+    padding: 0;
+}
+
+#athleteList li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px; /* Reduced padding for a more compact look */
+    margin-bottom: 5px; /* Reduced margin for less spacing between items */
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    font-size: 0.9em; /* Slightly smaller font size */
+}
+
+.athlete-info {
+    flex-grow: 1;
+}
+
+.athlete-actions {
+    display: flex;
+    gap: 5px; /* Space between action buttons */
+}
+
+.edit-btn, .remove-btn {
+    padding: 3px 8px; /* Reduced padding for buttons */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8em; /* Smaller font size for buttons */
+    transition: background-color 0.3s ease;
+}
+
+.edit-btn {
+    background-color: #4CAF50; /* Green */
+    color: white;
+}
+
+.remove-btn {
+    background-color: #f44336; /* Red */
+    color: white;
+}
+
+.edit-btn:hover, .remove-btn:hover {
+    opacity: 0.8;
+}
+
+/* Additional styles for the container */
+.container {
+    max-width: 600px; /* Reduced max-width for a more compact layout */
+    margin: 0 auto; /* Center the container */
+    padding: 10px; /* Reduced padding for the container */
+}
+
+/* Styles for the team size select box */
+#teamSize {
+    padding: 5px; /* Reduce padding for a smaller appearance */
+    font-size: 0.8em; /* Smaller font size */
+    border-radius: 4px; /* Keep border radius for consistency */
+    border: 1px solid #ccc; /* Border styling */
+    width: auto; /* Set width to auto to fit the content */
+    max-width: 120px; /* Optional: set a max width for better control */
+}
+
+/* Add these styles to your existing CSS */
+
+/* Compact list styles */
+.compact-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.compact-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px;
+    margin-bottom: 5px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.compact-list .athlete-info {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+/* Button styles (consistent with delete button on athlete list page) */
+.remove-btn {
+    padding: 3px 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8em;
+    background-color: #f44336; /* Red */
+    color: white;
+    transition: opacity 0.3s ease;
+}
+
+.remove-btn:hover {
+    opacity: 0.8;
+}
+
+/* Selected count styles */
+#selectedCount {
+    font-size: 0.9em;
+    color: #666;
+    margin-left: 5px;
+}
+
+#createdTeams {
+    margin-top: 20px;
+}
+
+.team {
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.team h4 {
+    margin-top: 0;
+    color: #333;
+}
+
+.team ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.team li {
+    margin-bottom: 5px;
+}
+
+.highlight {
+    background-color: yellow;
+    font-weight: bold;
+}
+
+nav {
+    background-color: var(--tertiary-color);
+    padding: 10px; /* Some padding */
+}
+
+nav ul {
+    list-style-type: none; /* Remove bullet points */
+    margin: 0; /* Remove default margin */
+    padding: 0; /* Remove default padding */
+}
+
+nav ul li {
+    display: inline; /* Display list items inline */
+    margin-right: 15px; /* Space between items */
+}
+
+nav ul li a {
+    color: var(--tertiary-color); /* White text color */
+    text-decoration: none; /* Remove underline */
+    font-weight: bold; /* Bold text */
+}
+
+nav ul li a:hover {
+    text-decoration: underline; /* Underline on hover */
+}
