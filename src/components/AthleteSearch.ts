@@ -21,7 +21,7 @@ export class AthleteSearch {
                 <input type="text" id="athleteSearchInput" placeholder="Search athletes..." oninput="athleteSearch.searchAthletes()">
                 <div id="searchResults"></div>
                 <h3>Selected Athletes <span id="selectedCount">(${selectedAthletes.length})</span></h3>
-                <button id="selectAllAthletes" onclick="athleteSearch.selectAllAthletes()">Select All Athletes</button>
+                <button id="clearAllAthletes" onclick="athleteSearch.clearAllAthletes()">Clear All Athletes</button>
                 <ul id="selectedAthletes" class="compact-list"></ul>
                 <br> <!-- Added line break here -->
                 <label for="teamSize">Team Size</label>
@@ -42,14 +42,19 @@ export class AthleteSearch {
         const searchInput = document.getElementById('athleteSearchInput') as HTMLInputElement;
         if (searchInput) {
             const searchTerm = searchInput.value.toLowerCase();
-            const selectedAthletes = this.sharedState.getSelectedAthletes();
-            
-            this.searchResults = this.allAthletes.filter(athlete => 
-                (athlete.firstName.toLowerCase().includes(searchTerm) || 
-                athlete.lastName.toLowerCase().includes(searchTerm)) &&
-                !this.isAthleteSelected(athlete, selectedAthletes)
-            );
-            
+            if(searchTerm === '') {
+                this.searchResults = [];
+            }
+            else {
+                const selectedAthletes = this.sharedState.getSelectedAthletes();
+                
+                this.searchResults = this.allAthletes.filter(athlete => 
+                    (athlete.firstName.toLowerCase().includes(searchTerm) || 
+                    athlete.lastName.toLowerCase().includes(searchTerm)) &&
+                    !this.isAthleteSelected(athlete, selectedAthletes)
+                );
+            }
+                
             this.displaySearchResults();
         }
     }
@@ -101,19 +106,10 @@ export class AthleteSearch {
         // We don't need to update search results here
     }
 
-    selectAllAthletes() {
-        const currentSelectedAthletes = this.sharedState.getSelectedAthletes();
-        const newSelectedAthletes = [...currentSelectedAthletes];
-
-        this.allAthletes.forEach(athlete => {
-            if (!this.isAthleteSelected(athlete, currentSelectedAthletes)) {
-                newSelectedAthletes.push(athlete);
-            }
-        });
-
-        this.sharedState.setSelectedAthletes(newSelectedAthletes);
+    clearAllAthletes() {
+        this.sharedState.setSelectedAthletes(([] as Athlete[]));
         this.updateSelectedList();
-        this.searchAthletes(); // Refresh search results
+        this.clearSearchResults();
     }
 
     private isAthleteSelected(athlete: Athlete, selectedAthletes: Athlete[]): boolean {

@@ -16,20 +16,25 @@ export class SharedState {
     }
 
     getSelectedAthletes(): Athlete[] {
+        if(localStorage.selectedAthletes) {
+            this.selectedAthletes = JSON.parse(localStorage.selectedAthletes);
+        }
         return this.selectedAthletes;
     }
 
     setSelectedAthletes(athletes: Athlete[]): void {
         this.selectedAthletes = athletes;
+        localStorage.selectedAthletes = JSON.stringify(this.selectedAthletes);
         this.notifyChangeListeners();
     }
 
     updateAthlete(oldAthlete: Athlete, newAthlete: Athlete): void {
-        this.selectedAthletes = this.selectedAthletes.map(athlete => 
-            (athlete.firstName === oldAthlete.firstName && athlete.lastName === oldAthlete.lastName) 
+        this.selectedAthletes = this.selectedAthletes.map(athlete =>
+            (athlete.firstName === oldAthlete.firstName && athlete.lastName === oldAthlete.lastName)
                 ? { ...newAthlete }
                 : athlete
         );
+        localStorage.selectedAthletes = JSON.stringify(this.selectedAthletes);
         this.notifyChangeListeners();
     }
 
