@@ -22,6 +22,9 @@ function renderAthletePage() {
         athleteList.addOrUpdateAthlete();
         athleteSearch.updateAthleteList(athleteList);
     });
+    document.getElementById('cancelUpdate')!.addEventListener('click', () => {
+        athleteList.cancelUpdate();
+    });
 }
 
 function renderSearchPage() {

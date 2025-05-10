@@ -13,7 +13,7 @@ export class AthleteList {
 
     private async loadAthletes() {
         try {
-            const response = await fetch('https://internal-ts.petersbattaglia.com:8443/attendees', {
+            const response = await fetch(this.sharedState.getEndpoint() + '/attendees', {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json'
@@ -35,7 +35,18 @@ export class AthleteList {
                     lastName: athlete.lastName || '',
                     gender: athlete.gender || '',
                     skillRating: typeof athlete.skillRating === 'number' ? athlete.skillRating : 0
-                })).sort((a: Athlete, b: Athlete) => a.firstName.localeCompare(b.firstName));
+                })).sort((a: Athlete, b: Athlete) => {
+                    // First, compare by first name
+                    const firstNameComparison = a.firstName.localeCompare(b.firstName);
+
+                    // If first names are equal, compare by last name
+                    if (firstNameComparison === 0) {
+                      return a.lastName.localeCompare(b.lastName);
+                    }
+
+                    // Otherwise, return the result of first name comparison
+                    return firstNameComparison;
+                  });
             } else {
                 console.error('Unexpected data structure:', data);
                 throw new Error('Unexpected data structure');
@@ -56,16 +67,25 @@ export class AthleteList {
                 <div>
                     <input type="text" id="firstName" placeholder="First Name" />
                     <input type="text" id="lastName" placeholder="Last Name" />
-                    <select id="gender">
-                        <option value="">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                    </select>
-                    <select id="skillRating">
-                        <option value="">Select Skill Rating</option>
-                        ${Array.from({length: 5}, (_, i) => `<option value="${i+1}">${i+1}</option>`).join('')}
-                    </select>
-                    <button id="addOrUpdateAthlete">Add Athlete</button>
+                    <div class="radHolder">
+                    <input type="radio" id="genderM" name="gender" value="Male" class="radSelector" /> <label for="genderM" class="radLabel">Male</label>
+                    <input type="radio" id="genderF" name="gender" value="Female" class="radSelector" /> <label for="genderF" class="radLabel">Female</label>
+                    </div>
+                    <br />
+                    <div class="radHolder">
+                    ${Array.from({length: 5}, (_, i) => `<input type="radio" name="skillRating" id="skillRating${i+1}" value="${i+1}" class="radSelector" /> <label for="skillRating${i+1}" class="radLabel">${i+1}</label>`).join(' ')}
+                    </div>
+                    <br />
+                    <div class="radHolder">
+                    ${Array.from({length: 5}, (_, i) => `<input type="radio" name="skillRating" id="skillRating${i+6}" value="${i+6}" class="radSelector" /> <label for="skillRating${i+6}" class="radLabel">${i+6}</label>`).join(' ')}
+                    </div>
+                    <br />
+                    <center>
+                        <div style="display: inline;">
+                            <button id="addOrUpdateAthlete">Add Athlete</button>&nbsp;&nbsp;&nbsp;
+                            <button id="cancelUpdate" hidden="true">Cancel Update</button>
+                        </div>
+                    </center>
                 </div>
                 <ul id="athleteList"></ul>
             </div>
@@ -75,8 +95,8 @@ export class AthleteList {
     async addOrUpdateAthlete() {
         const firstName = (document.getElementById('firstName') as HTMLInputElement).value.trim();
         const lastName = (document.getElementById('lastName') as HTMLInputElement).value.trim();
-        const gender = (document.getElementById('gender') as HTMLSelectElement).value;
-        const skillRating = parseInt((document.getElementById('skillRating') as HTMLSelectElement).value, 10);
+        const gender = (document.querySelector('input[name="gender"]:checked') as HTMLInputElement).value;
+        const skillRating = parseInt((document.querySelector('input[name="skillRating"]:checked') as HTMLInputElement).value, 10);
 
         if (firstName && lastName && gender && skillRating) {
             const athlete: Athlete = { firstName, lastName, gender, skillRating };
@@ -101,19 +121,29 @@ export class AthleteList {
                 this.athletes.push(athlete);
             }
 
-            // Sort athletes by first name
-            this.athletes.sort((a, b) => a.firstName.localeCompare(b.firstName));
+            this.athletes.sort((a, b) => {
+                // First, compare by first name
+                const firstNameComparison = a.firstName.localeCompare(b.firstName);
+
+                // If first names are equal, compare by last name
+                if (firstNameComparison === 0) {
+                  return a.lastName.localeCompare(b.lastName);
+                }
+
+                // Otherwise, return the result of first name comparison
+                return firstNameComparison;
+              });
 
             // Make POST request with updated athlete list
             try {
-                const response = await fetch('https://internal-ts.petersbattaglia.com:8443/attendees', {
+                const response = await fetch(this.sharedState.getEndpoint() + '/attendees', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({ response: this.athletes }),
-                    mode: 'cors' // Explicitly set CORS mode
+                    mode: 'cors'
                 });
 
                 if (!response.ok) {
@@ -129,6 +159,10 @@ export class AthleteList {
 
             this.updateList();
             this.clearForm();
+
+            //const selectedAthletes = this.sharedState.getSelectedAthletes();
+            //selectedAthletes.push(athlete);
+
         } else {
             alert('Please fill out all fields.');
         }
@@ -145,17 +179,43 @@ export class AthleteList {
     updateList() {
         const listElement = document.getElementById('athleteList');
         if (listElement) {
-            listElement.innerHTML = this.athletes.map((athlete, index) =>
-                `<li>
-                    <span class="athlete-info">
-                        ${athlete.firstName} ${athlete.lastName} (${athlete.gender}, Skill: ${athlete.skillRating})
-                    </span>
-                    <span class="athlete-actions">
-                        <button onclick="athleteList.editAthlete(${index})" class="edit-btn">Edit</button>
-                        <button onclick="athleteList.removeAthlete(${index})" class="remove-btn">Delete</button>
-                    </span>
-                </li>`
-            ).join('');
+            // Sort and group athletes by first letter of first name
+            const sortedAthletes = this.athletes.sort((a, b) => a.firstName.localeCompare(b.firstName));
+            const groupedAthletes: { [key: string]: any[] } = {};
+            sortedAthletes.forEach(athlete => {
+                const firstLetter = athlete.firstName.charAt(0).toUpperCase();
+                if (!groupedAthletes[firstLetter]) {
+                    groupedAthletes[firstLetter] = [];
+                }
+                groupedAthletes[firstLetter].push(athlete);
+            });
+
+            // Generate HTML
+            let html = '';
+            Object.keys(groupedAthletes).sort().forEach((firstLetter) => {
+                const athletes = groupedAthletes[firstLetter];
+                html += `<h2>${firstLetter}</h2>`; // Header with letter
+                html += '<ul>';
+                athletes.forEach((athlete, athleteIndex) => {
+                    const athleteIndexInOriginalList = sortedAthletes.indexOf(athlete);
+                    html += `
+                        <li>
+                            <span class="athlete-info">
+                                ${athlete.firstName} ${athlete.lastName} (${athlete.gender}, Skill: ${athlete.skillRating})
+                            </span>
+                            <span class="athlete-actions">
+                                <button onclick="athleteList.editAthlete(${athleteIndexInOriginalList})" class="edit-btn">Edit</button>
+                                <button onclick="athleteList.removeAthlete(${athleteIndexInOriginalList})" class="remove-btn">Delete</button>
+                            </span>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+            });
+
+            html += `<br /><br />${sortedAthletes.length} Total Athletes.`;
+
+            listElement.innerHTML = html;
         }
     }
 
@@ -163,11 +223,18 @@ export class AthleteList {
         const athlete = this.athletes[index];
         (document.getElementById('firstName') as HTMLInputElement).value = athlete.firstName;
         (document.getElementById('lastName') as HTMLInputElement).value = athlete.lastName;
-        (document.getElementById('gender') as HTMLSelectElement).value = athlete.gender;
-        (document.getElementById('skillRating') as HTMLSelectElement).value = athlete.skillRating.toString();
+        if (athlete.gender == "Male") {
+            (document.getElementById('genderM') as HTMLInputElement).checked = true;
+        } else {
+            (document.getElementById('genderF') as HTMLInputElement).checked = true;
+        }
+
+        (document.getElementById('skillRating'+athlete.skillRating.toString()) as HTMLInputElement).checked = true;
 
         this.editingIndex = index;
         (document.getElementById('addOrUpdateAthlete') as HTMLButtonElement).textContent = 'Update Athlete';
+        (document.getElementById('cancelUpdate') as HTMLButtonElement).hidden = false;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     async removeAthlete(index: number) {
@@ -175,7 +242,7 @@ export class AthleteList {
         
         // Make POST request with updated athlete list
         try {
-            const response = await fetch('https://internal-ts.petersbattaglia.com:8443/attendees', {
+            const response = await fetch(this.sharedState.getEndpoint() + '/attendees', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -198,10 +265,22 @@ export class AthleteList {
     clearForm() {
         (document.getElementById('firstName') as HTMLInputElement).value = '';
         (document.getElementById('lastName') as HTMLInputElement).value = '';
-        (document.getElementById('gender') as HTMLSelectElement).value = '';
-        (document.getElementById('skillRating') as HTMLSelectElement).value = '';
+
+        (document.getElementById('genderM') as HTMLInputElement).checked = false;
+        (document.getElementById('genderF') as HTMLInputElement).checked = false;
+
+        for(var i=0; i < 10; i++) {
+            (document.getElementById('skillRating'+(i+1).toString()) as HTMLInputElement).checked = false;
+        }
+
         this.editingIndex = null;
         (document.getElementById('addOrUpdateAthlete') as HTMLButtonElement).textContent = 'Add Athlete';
+
+        (document.getElementById('cancelUpdate') as HTMLButtonElement).hidden = true;
+    }
+
+    cancelUpdate() {
+        this.clearForm();
     }
 
     getAthletes(): Athlete[] {

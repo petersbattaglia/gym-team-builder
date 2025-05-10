@@ -22,8 +22,9 @@ export class AthleteSearch {
                 <div id="searchResults"></div>
                 <h3>Selected Athletes <span id="selectedCount">(${selectedAthletes.length})</span></h3>
                 <button id="clearAllAthletes" onclick="athleteSearch.clearAllAthletes()">Clear All Athletes</button>
+                <br /><br />
                 <ul id="selectedAthletes" class="compact-list"></ul>
-                <br> <!-- Added line break here -->
+                <br /> <!-- Added line break here -->
                 <label for="teamSize">Team Size</label>
                 <select id="teamSize">
                     <option value="1">1</option>
@@ -32,6 +33,7 @@ export class AthleteSearch {
                     <option value="4">4</option>
                     <option value="5">5</option>
                     <option value="6">6</option>
+                    <option value="7">7</option>
                 </select>
                 <button id="makeTeams">Make Teams</button>
             </div>
@@ -85,6 +87,20 @@ export class AthleteSearch {
     removeSelectedAthlete(index: number) {
         const selectedAthletes = this.sharedState.getSelectedAthletes();
         selectedAthletes.splice(index, 1);
+
+        selectedAthletes.sort((a: Athlete, b: Athlete) => {
+            // First, compare by first name
+            const firstNameComparison = a.firstName.localeCompare(b.firstName);
+
+            // If first names are equal, compare by last name
+            if (firstNameComparison === 0) {
+              return a.lastName.localeCompare(b.lastName);
+            }
+
+            // Otherwise, return the result of first name comparison
+            return firstNameComparison;
+        });
+
         this.sharedState.setSelectedAthletes(selectedAthletes);
         this.updateSelectedList();
         this.clearSearchResults(); // Clear search results when an athlete is removed
@@ -95,6 +111,20 @@ export class AthleteSearch {
         const selectedAthletes = this.sharedState.getSelectedAthletes();
         if (athlete && !this.isAthleteSelected(athlete, selectedAthletes)) {
             selectedAthletes.push(athlete);
+
+            selectedAthletes.sort((a: Athlete, b: Athlete) => {
+                // First, compare by first name
+                const firstNameComparison = a.firstName.localeCompare(b.firstName);
+
+                // If first names are equal, compare by last name
+                if (firstNameComparison === 0) {
+                  return a.lastName.localeCompare(b.lastName);
+                }
+
+                // Otherwise, return the result of first name comparison
+                return firstNameComparison;
+            });
+
             this.sharedState.setSelectedAthletes(selectedAthletes);
             this.updateSelectedList();
         }
@@ -121,6 +151,18 @@ export class AthleteSearch {
 
     updateSelectedList() {
         const selectedAthletes = this.sharedState.getSelectedAthletes();
+        selectedAthletes.sort((a: Athlete, b: Athlete) => {
+            // First, compare by first name
+            const firstNameComparison = a.firstName.localeCompare(b.firstName);
+
+            // If first names are equal, compare by last name
+            if (firstNameComparison === 0) {
+              return a.lastName.localeCompare(b.lastName);
+            }
+
+            // Otherwise, return the result of first name comparison
+            return firstNameComparison;
+            });
         const listElement = document.getElementById('selectedAthletes');
         const countElement = document.getElementById('selectedCount');
         if (listElement && countElement) {
@@ -151,7 +193,7 @@ export class AthleteSearch {
             attendees: selectedAthletes
         };
     
-        fetch('https://internal-ts.petersbattaglia.com:8443/make-teams', {
+        fetch(this.sharedState.getEndpoint() + '/make-teams', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -202,6 +244,20 @@ export class AthleteSearch {
             );
             return updatedAthlete || selectedAthlete;
         });
+
+        updatedSelectedAthletes.sort((a: Athlete, b: Athlete) => {
+            // First, compare by first name
+            const firstNameComparison = a.firstName.localeCompare(b.firstName);
+            
+            // If first names are equal, compare by last name
+            if (firstNameComparison === 0) {
+              return a.lastName.localeCompare(b.lastName);
+            }
+            
+            // Otherwise, return the result of first name comparison
+            return firstNameComparison;
+        });
+
         this.sharedState.setSelectedAthletes(updatedSelectedAthletes);
     }
 
@@ -229,8 +285,13 @@ export class AthleteSearch {
                     <div class="team">
                         <h4>Team ${index + 1}</h4>
                         <ul>
-                            ${team.map(athlete => `<li>${athlete.firstName} ${athlete.lastName}</li>`).join('')}
+                            ${team.map(athlete => `<li>${athlete.firstName} ${athlete.lastName} (${athlete.skillRating})</li>`).join('')}
                         </ul>
+                        <div style="width: 100%; text-align: right;">
+                            <div>
+                                <b>Aggregate Score: ${team.reduce((sum, current) => sum + current.skillRating, 0)}</b>
+                            </div>
+                        </div>
                     </div>
                 `;
             } else {
