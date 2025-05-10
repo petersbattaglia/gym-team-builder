@@ -151,7 +151,7 @@ export class AthleteSearch {
             attendees: selectedAthletes
         };
     
-        fetch('https://internal-ts.petersbattaglia.com:8443/make-teams', {
+        fetch('https://teams.petersbattaglia.com/make-teams', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

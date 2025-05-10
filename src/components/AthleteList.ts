@@ -13,7 +13,7 @@ export class AthleteList {
 
     private async loadAthletes() {
         try {
-            const response = await fetch('https://internal-ts.petersbattaglia.com:8443/attendees', {
+            const response = await fetch('https://teams.petersbattaglia.com/attendees', {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json'
@@ -106,7 +106,7 @@ export class AthleteList {
 
             // Make POST request with updated athlete list
             try {
-                const response = await fetch('https://internal-ts.petersbattaglia.com:8443/attendees', {
+                const response = await fetch('https://teams.petersbattaglia.com/attendees', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -175,7 +175,7 @@ export class AthleteList {
         
         // Make POST request with updated athlete list
         try {
-            const response = await fetch('https://internal-ts.petersbattaglia.com:8443/attendees', {
+            const response = await fetch('https://teams.petersbattaglia.com/attendees', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
