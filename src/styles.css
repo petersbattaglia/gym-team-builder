@@ -315,3 +315,40 @@ nav ul li a {
 nav ul li a:hover {
     text-decoration: underline; /* Underline on hover */
 }
+
+.radHolder {
+  display: flex;
+  position: relative;
+}
+
+.radLabel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 50px;
+  background: #CCCCCC;
+  color: white;
+  border-radius: 10px;
+  margin: 0 10px 0 0;
+  cursor: pointer;
+}
+
+.radSelector:checked + .radLabel {
+  background: var(--tertiary-color);
+}
+
+.radSelector {
+  opacity: 0;
+}
+
+#addOrUpdateAthlete {
+    width: 35%;
+    padding: 10px;
+}
+
+#cancelUpdate {
+    background-color: lightcoral;
+    width: 35%;
+    padding: 10px;
+}
