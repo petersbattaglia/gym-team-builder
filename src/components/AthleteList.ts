@@ -63,7 +63,7 @@ export class AthleteList {
                     </select>
                     <select id="skillRating">
                         <option value="">Select Skill Rating</option>
-                        ${Array.from({length: 5}, (_, i) => `<option value="${i+1}">${i+1}</option>`).join('')}
+                        ${Array.from({length: 10}, (_, i) => `<option value="${i+1}">${i+1}</option>`).join('')}
                     </select>
                     <button id="addOrUpdateAthlete">Add Athlete</button>
                 </div>
