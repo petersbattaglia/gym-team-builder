@@ -6,7 +6,12 @@ export class AthleteSearch {
     private allAthletes: Athlete[] = [];
     private sharedState: SharedState;
     private searchResults: Athlete[] = [];
-    private currentTeams: Athlete[][] = []; // <-- new: in-memory teams for DnD
+    private currentTeams: Athlete[][] = []; // <-- existing
+    private touchDragState?: {
+        srcTeam: number;
+        srcIdx: number;
+        ghost?: HTMLElement;
+    };
 
     constructor(athleteList: AthleteList) {
         this.allAthletes = athleteList.getAthletes();
@@ -269,7 +274,9 @@ export class AthleteSearch {
                     <ul class="team-list" data-team-index="${index}">
                         ${Array.isArray(team) ? team.map((ath, i) => `
                             <li draggable="true" class="team-member" data-team-index="${index}" data-athlete-index="${i}">
-                                ${(ath.firstName || '')} ${(ath.lastName || '')} (${ath.gender || ''}, Skill: ${(ath as any).skillRating ?? ''})
+                                <span class="drag-handle" aria-hidden="true" title="Drag">⋮⋮</span>
+                                <span class="member-label">${(ath.firstName || '')} ${(ath.lastName || '')}</span>
+                                <span class="member-meta">(${ath.gender || ''}, Skill: ${(ath as any).skillRating ?? ''})</span>
                             </li>
                         `).join('') : ''}
                     </ul>
@@ -283,9 +290,11 @@ export class AthleteSearch {
 
     // Attach drag/drop handlers and update view on changes
     private attachDragHandlers(container: HTMLElement) {
-        // cast NodeLists to HTMLElement collections for proper types
+        // --- Existing mouse/HTML5 drag handlers ---
         const members = container.querySelectorAll('.team-member') as NodeListOf<HTMLElement>;
         members.forEach(el => {
+            // ensure draggable attribute exists for mouse drag
+            el.setAttribute('draggable', 'true');
             el.addEventListener('dragstart', (ev: Event) => {
                 const e = ev as DragEvent;
                 const target = e.currentTarget as HTMLElement;
@@ -293,6 +302,11 @@ export class AthleteSearch {
                 const athleteIndex = target.dataset.athleteIndex ?? '';
                 e.dataTransfer?.setData('text/plain', `${teamIndex}:${athleteIndex}`);
                 if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+                target.classList.add('dragging');
+            });
+            el.addEventListener('dragend', (ev: Event) => {
+                const target = ev.currentTarget as HTMLElement;
+                target.classList.remove('dragging');
             });
         });
 
@@ -302,10 +316,12 @@ export class AthleteSearch {
                 ev.preventDefault();
                 const e = ev as DragEvent;
                 if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+                list.classList.add('drag-over');
             });
-
+            list.addEventListener('dragleave', () => list.classList.remove('drag-over'));
             list.addEventListener('drop', (ev: Event) => {
                 ev.preventDefault();
+                list.classList.remove('drag-over');
                 const e = ev as DragEvent;
                 const payload = e.dataTransfer?.getData('text/plain');
                 if (!payload) return;
@@ -324,6 +340,71 @@ export class AthleteSearch {
                 teamsContainer.innerHTML = this.renderTeams(this.currentTeams);
                 this.attachDragHandlers(teamsContainer);
             });
+        });
+
+        // --- Touch / pointer helpers to reduce accidental scroll on mobile and provide explicit handle ---
+        // attach touchstart/pointerdown to handles only so swipes outside handle still scroll
+        const handles = container.querySelectorAll('.drag-handle') as NodeListOf<HTMLElement>;
+        handles.forEach(handle => {
+            // prevent touch from turning into scroll when interacting with handle
+            handle.addEventListener('touchstart', (ev: TouchEvent) => {
+                // stop page scroll, start custom touch-drag sequence
+                ev.preventDefault();
+                const member = handle.closest('.team-member') as HTMLElement | null;
+                if (!member) return;
+                const srcTeam = parseInt(member.dataset.teamIndex || '0', 10);
+                const srcIdx = parseInt(member.dataset.athleteIndex || '0', 10);
+                this.touchDragState = { srcTeam, srcIdx };
+
+                // create a lightweight ghost
+                const ghost = member.cloneNode(true) as HTMLElement;
+                ghost.style.position = 'fixed';
+                ghost.style.left = `${ev.touches[0].clientX - 20}px`;
+                ghost.style.top = `${ev.touches[0].clientY - 20}px`;
+                ghost.style.pointerEvents = 'none';
+                ghost.style.opacity = '0.9';
+                ghost.classList.add('drag-ghost');
+                document.body.appendChild(ghost);
+                this.touchDragState.ghost = ghost;
+
+                // global touchmove to move ghost
+                const onMove = (mEv: TouchEvent) => {
+                    mEv.preventDefault();
+                    const t = mEv.touches[0];
+                    if (this.touchDragState?.ghost) {
+                        this.touchDragState.ghost.style.left = `${t.clientX - 20}px`;
+                        this.touchDragState.ghost.style.top = `${t.clientY - 20}px`;
+                    }
+                };
+                const onEnd = (endEv: TouchEvent) => {
+                    endEv.preventDefault();
+                    const t = endEv.changedTouches[0];
+                    const elAt = document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null;
+                    const targetList = elAt?.closest('.team-list') as HTMLElement | null;
+                    if (this.touchDragState) {
+                        const { srcTeam, srcIdx } = this.touchDragState;
+                        const targetTeam = targetList ? parseInt(targetList.dataset.teamIndex || '0', 10) : srcTeam;
+                        if (Array.isArray(this.currentTeams[srcTeam]) && this.currentTeams[srcTeam][srcIdx]) {
+                            const athlete = this.currentTeams[srcTeam].splice(srcIdx, 1)[0];
+                            this.currentTeams[targetTeam].push(athlete);
+                        }
+                    }
+
+                    // cleanup
+                    if (this.touchDragState?.ghost) document.body.removeChild(this.touchDragState.ghost);
+                    this.touchDragState = undefined;
+                    (document as any).removeEventListener('touchmove', onMove as EventListener, { passive: false });
+                    (document as any).removeEventListener('touchend', onEnd as EventListener);
+                    const teamsContainer = document.getElementById('createdTeams');
+                    if (teamsContainer) {
+                        teamsContainer.innerHTML = this.renderTeams(this.currentTeams);
+                        this.attachDragHandlers(teamsContainer);
+                    }
+                };
+
+                (document as any).addEventListener('touchmove', onMove as EventListener, { passive: false });
+                (document as any).addEventListener('touchend', onEnd as EventListener);
+            }, { passive: false });
         });
     }
 

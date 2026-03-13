@@ -392,7 +392,7 @@ nav ul li a:hover {
     border-radius: 6px;
 }
 
-/* Team member row + handle */
+/* Team member row + handle (removed the previous .team-member::before to avoid duplicate handles) */
 .team-member {
     display: flex;
     align-items: center;
@@ -407,18 +407,34 @@ nav ul li a:hover {
     transition: box-shadow 120ms ease, transform 80ms ease, background 120ms ease;
 }
 
-/* Dot-pattern drag handle using pseudo-element */
-.team-member::before {
+/* Drag handle (single visible handle) */
+.drag-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    margin-right: 10px;
+    border-radius: 6px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
+    color: rgba(0,0,0,0.6);
+    font-weight: 600;
+    cursor: grab;
+    touch-action: none; /* prevents touch->scroll when interacting with handle */
+    user-select: none;
+    flex: 0 0 34px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02) inset;
+}
+
+/* dotted pattern on the single handle 
+.drag-handle::after {
     content: "";
     width: 10px;
     height: 14px;
-    flex: 0 0 10px;
-    margin-right: 8px;
-    border-radius: 2px;
     background-image: radial-gradient(circle, rgba(0,0,0,0.45) 1px, transparent 1px);
     background-size: 4px 4px;
     opacity: 0.9;
-}
+}*/
 
 /* Active/dragging visuals */
 .team-member:active,
@@ -440,4 +456,67 @@ nav ul li a:hover {
 @media (max-width: 640px) {
     .teams-grid { flex-direction: column; }
     .team { width: 100%; }
+}
+
+/* Larger, obvious drag handle with touch-friendly area */
+.drag-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    margin-right: 10px;
+    border-radius: 6px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
+    color: rgba(0,0,0,0.6);
+    cursor: grab;
+    touch-action: none; /* prevents touch->scroll when interacting with handle */
+    user-select: none;
+    flex: 0 0 34px;
+    position: relative;
+}
+
+/* replace the previous ::after bitmap with three crisp dots 
+.drag-handle::after {
+    content: "";
+    width: 8px;
+    height: 28px;
+    display: block;
+    background-image:
+        radial-gradient(circle, currentColor 60%, transparent 61%),
+        radial-gradient(circle, currentColor 60%, transparent 61%),
+        radial-gradient(circle, currentColor 60%, transparent 61%);
+    background-repeat: no-repeat;
+    background-size: 6px 6px;
+    background-position: center 6px, center 14px, center 22px;
+    opacity: 0.75;
+    pointer-events: none;
+    transform: translateY(0);
+}*/
+/* slightly bolder on hover/active to signal interactivity */
+.drag-handle:hover::after,
+.drag-handle:active::after {
+    opacity: 1;
+    transform: translateY(-1px);
+}
+
+/* ensure the member row remains touch-friendly */
+.team-member {
+    padding: 8px;
+    gap: 10px;
+}
+
+/* ghost visual used during touch dragging */
+.drag-ghost {
+    transform: scale(1.02);
+    box-shadow: 0 10px 30px rgba(16,24,40,0.18);
+    opacity: 0.95;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+/* hint label for small screens */
+@media (max-width: 640px) {
+    .drag-handle { width: 40px; height: 40px; }
+    .drag-handle[title]::after { /* keep dot pattern but show extra hint via title attribute on hover on desktop */ }
 }
