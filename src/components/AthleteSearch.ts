@@ -6,6 +6,7 @@ export class AthleteSearch {
     private allAthletes: Athlete[] = [];
     private sharedState: SharedState;
     private searchResults: Athlete[] = [];
+    private currentTeams: Athlete[][] = []; // <-- new: in-memory teams for DnD
 
     constructor(athleteList: AthleteList) {
         this.allAthletes = athleteList.getAthletes();
@@ -24,12 +25,12 @@ export class AthleteSearch {
                 <button id="clearAllAthletes" onclick="athleteSearch.clearAllAthletes()">Clear All Athletes</button>
                 <br /><br />
                 <ul id="selectedAthletes" class="compact-list"></ul>
-                <br /> <!-- Added line break here -->
+                <br />
                 <label for="teamSize">Team Size</label>
                 <select id="teamSize">
                     <option value="1">1</option>
                     <option value="2">2</option>
-                    <option value="3" selected>3</option> <!-- Set default value to 3 -->
+                    <option value="3" selected>3</option>
                     <option value="4">4</option>
                     <option value="5">5</option>
                     <option value="6">6</option>
@@ -162,7 +163,7 @@ export class AthleteSearch {
 
             // Otherwise, return the result of first name comparison
             return firstNameComparison;
-            });
+        });
         const listElement = document.getElementById('selectedAthletes');
         const countElement = document.getElementById('selectedCount');
         if (listElement && countElement) {
@@ -182,17 +183,17 @@ export class AthleteSearch {
         const teamSizeElement = document.getElementById('teamSize') as HTMLSelectElement;
         const teamSize = parseInt(teamSizeElement.value, 10);
         const selectedAthletes = this.sharedState.getSelectedAthletes();
-    
+
         if (!teamSize || selectedAthletes.length === 0) {
             alert('Please select a team size and ensure you have selected athletes.');
             return;
         }
-    
+
         const requestBody = {
             team_size: teamSize,
             attendees: selectedAthletes
         };
-    
+
         fetch(this.sharedState.getEndpoint() + '/make-teams', {
             method: 'POST',
             headers: {
@@ -211,26 +212,118 @@ export class AthleteSearch {
         })
         .then(data => {
             console.log('Teams created:', data);
-            
+
+            // Normalize server response into array-of-arrays
+            let teams: Athlete[][];
+            if (Array.isArray(data)) {
+                teams = data as Athlete[][];
+            } else if (data && typeof data === 'object') {
+                teams = Object.values(data) as Athlete[][];
+            } else {
+                console.error('Unexpected data format:', data);
+                alert('Failed to parse teams response.');
+                return;
+            }
+
+            // Keep teams in memory so we can mutate on drag/drop
+            this.currentTeams = teams;
+
             // Remove any existing teams display
             const existingTeams = document.getElementById('createdTeams');
             if (existingTeams) {
                 existingTeams.remove();
             }
-    
-            // Render the new teams
+
+            // Render the new teams into a container element
             const teamsContainer = document.createElement('div');
-            teamsContainer.innerHTML = this.renderTeams(data);
-            
-            // Find the make teams button and insert the new teams after it
+            teamsContainer.id = 'createdTeams';
+            teamsContainer.innerHTML = this.renderTeams(this.currentTeams);
+
+            // Insert into DOM right after the makeTeams button
             const makeTeamsButton = document.getElementById('makeTeams');
             if (makeTeamsButton && makeTeamsButton.parentNode) {
                 makeTeamsButton.parentNode.insertBefore(teamsContainer, makeTeamsButton.nextSibling);
             }
+
+            // Attach drag & drop handlers
+            this.attachDragHandlers(teamsContainer);
         })
         .catch(error => {
             console.error('Error creating teams:', error);
             alert('Failed to create teams. Please check the console for more details.');
+        });
+    }
+
+    // Render teams - now expects an array-of-arrays of Athlete
+    renderTeams(data: Athlete[][]): string {
+        if (!Array.isArray(data) || data.length === 0) {
+            return '<p>No teams were created.</p>';
+        }
+
+        let teamsHtml = '<div id="createdTeamsInner" class="teams-grid">';
+        data.forEach((team, index) => {
+            const aggregate = Array.isArray(team) ? team.reduce((sum, a) => sum + (Number((a as any).skillRating) || 0), 0) : 0;
+            teamsHtml += `
+                <div class="team" data-team-index="${index}">
+                    <h4>Team ${index + 1} (${team.length})</h4>
+                    <ul class="team-list" data-team-index="${index}">
+                        ${Array.isArray(team) ? team.map((ath, i) => `
+                            <li draggable="true" class="team-member" data-team-index="${index}" data-athlete-index="${i}">
+                                ${(ath.firstName || '')} ${(ath.lastName || '')} (${ath.gender || ''}, Skill: ${(ath as any).skillRating ?? ''})
+                            </li>
+                        `).join('') : ''}
+                    </ul>
+                    <div class="aggregate-score">Aggregate Score: <b>${aggregate}</b></div>
+                </div>
+            `;
+        });
+        teamsHtml += '</div>';
+        return teamsHtml;
+    }
+
+    // Attach drag/drop handlers and update view on changes
+    private attachDragHandlers(container: HTMLElement) {
+        // cast NodeLists to HTMLElement collections for proper types
+        const members = container.querySelectorAll('.team-member') as NodeListOf<HTMLElement>;
+        members.forEach(el => {
+            el.addEventListener('dragstart', (ev: Event) => {
+                const e = ev as DragEvent;
+                const target = e.currentTarget as HTMLElement;
+                const teamIndex = target.dataset.teamIndex ?? '';
+                const athleteIndex = target.dataset.athleteIndex ?? '';
+                e.dataTransfer?.setData('text/plain', `${teamIndex}:${athleteIndex}`);
+                if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+            });
+        });
+
+        const lists = container.querySelectorAll('.team-list') as NodeListOf<HTMLElement>;
+        lists.forEach(list => {
+            list.addEventListener('dragover', (ev: Event) => {
+                ev.preventDefault();
+                const e = ev as DragEvent;
+                if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            });
+
+            list.addEventListener('drop', (ev: Event) => {
+                ev.preventDefault();
+                const e = ev as DragEvent;
+                const payload = e.dataTransfer?.getData('text/plain');
+                if (!payload) return;
+                const [srcTeamStr, srcIdxStr] = payload.split(':');
+                const srcTeam = parseInt(srcTeamStr, 10);
+                const srcIdx = parseInt(srcIdxStr, 10);
+                const targetTeam = parseInt((list as HTMLElement).dataset.teamIndex || '0', 10);
+
+                if (!Array.isArray(this.currentTeams[srcTeam]) || !this.currentTeams[srcTeam][srcIdx]) return;
+
+                const athlete = this.currentTeams[srcTeam].splice(srcIdx, 1)[0];
+                this.currentTeams[targetTeam].push(athlete);
+
+                const teamsContainer = document.getElementById('createdTeams');
+                if (!teamsContainer) return;
+                teamsContainer.innerHTML = this.renderTeams(this.currentTeams);
+                this.attachDragHandlers(teamsContainer);
+            });
         });
     }
 
@@ -259,46 +352,5 @@ export class AthleteSearch {
         });
 
         this.sharedState.setSelectedAthletes(updatedSelectedAthletes);
-    }
-
-    renderTeams(data: any) {
-        console.log('Received data:', data); // Log the received data
-    
-        let teams: Athlete[][];
-        if (Array.isArray(data)) {
-            teams = data;
-        } else if (data && typeof data === 'object') {
-            teams = Object.values(data);
-        } else {
-            console.error('Unexpected data format:', data);
-            return '<p>Error: Unable to render teams due to unexpected data format.</p>';
-        }
-    
-        if (!Array.isArray(teams) || teams.length === 0) {
-            return '<p>No teams were created.</p>';
-        }
-    
-        let teamsHtml = '<div id="createdTeams">';
-        teams.forEach((team, index) => {
-            if (Array.isArray(team)) {
-                teamsHtml += `
-                    <div class="team">
-                        <h4>Team ${index + 1}</h4>
-                        <ul>
-                            ${team.map(athlete => `<li>${athlete.firstName} ${athlete.lastName} (${athlete.skillRating})</li>`).join('')}
-                        </ul>
-                        <div style="width: 100%; text-align: right;">
-                            <div>
-                                <b>Aggregate Score: ${team.reduce((sum, current) => sum + current.skillRating, 0)}</b>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                console.error('Unexpected team format:', team);
-            }
-        });
-        teamsHtml += '</div>';
-        return teamsHtml;
     }
 }

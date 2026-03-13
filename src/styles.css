@@ -352,3 +352,92 @@ nav ul li a:hover {
     width: 35%;
     padding: 10px;
 }
+
+/* Teams grid & card */
+.teams-grid {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+.team {
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 8px;
+    padding: 10px;
+    width: 240px;
+    box-shadow: 0 1px 3px rgba(16,24,40,0.04);
+}
+
+/* Team header */
+.team > h4 {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+    color: #222;
+}
+
+/* Team list */
+.team-list {
+    list-style: none;
+    padding: 6px;
+    margin: 0;
+    min-height: 44px;
+    transition: background-color 120ms ease;
+}
+
+/* Visual for drop target (you can toggle .drag-over from JS on dragenter/leave) */
+.team-list.drag-over {
+    background: linear-gradient(90deg, rgba(0,150,136,0.04), rgba(0,150,136,0.01));
+    border: 1px dashed rgba(0,150,136,0.25);
+    border-radius: 6px;
+}
+
+/* Team member row + handle */
+.team-member {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    background: #fafafa;
+    border: 1px solid transparent;
+    cursor: grab;
+    user-select: none;
+    transition: box-shadow 120ms ease, transform 80ms ease, background 120ms ease;
+}
+
+/* Dot-pattern drag handle using pseudo-element */
+.team-member::before {
+    content: "";
+    width: 10px;
+    height: 14px;
+    flex: 0 0 10px;
+    margin-right: 8px;
+    border-radius: 2px;
+    background-image: radial-gradient(circle, rgba(0,0,0,0.45) 1px, transparent 1px);
+    background-size: 4px 4px;
+    opacity: 0.9;
+}
+
+/* Active/dragging visuals */
+.team-member:active,
+.team-member.dragging {
+    cursor: grabbing;
+    transform: scale(0.998);
+    box-shadow: 0 6px 18px rgba(16,24,40,0.12);
+    opacity: 0.95;
+}
+
+/* Aggregate score styling */
+.aggregate-score {
+    margin-top: 8px;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+/* Small responsive tweak */
+@media (max-width: 640px) {
+    .teams-grid { flex-direction: column; }
+    .team { width: 100%; }
+}
