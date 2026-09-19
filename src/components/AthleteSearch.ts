@@ -7,6 +7,7 @@ export class AthleteSearch {
     private sharedState: SharedState;
     private searchResults: Athlete[] = [];
     private currentTeams: Athlete[][] = []; // <-- existing
+    private athleteList: AthleteList;
     private touchDragState?: {
         srcTeam: number;
         srcIdx: number;
@@ -14,6 +15,7 @@ export class AthleteSearch {
     };
 
     constructor(athleteList: AthleteList) {
+        this.athleteList = athleteList;
         this.allAthletes = athleteList.getAthletes();
         this.sharedState = SharedState.getInstance();
         this.sharedState.addChangeListener(() => this.onAthleteChange());
@@ -26,7 +28,12 @@ export class AthleteSearch {
                 <h2>Build Teams</h2>
                 <input type="text" id="athleteSearchInput" placeholder="Search athletes..." oninput="athleteSearch.searchAthletes()">
                 <div id="searchResults"></div>
-                <h3>Selected Athletes <span id="selectedCount">(${selectedAthletes.length})</span></h3>
+                <button id="showAddAthleteForm" onclick="athleteSearch.showAddAthleteForm()">+ Add New Athlete</button>
+                <div id="athleteFormPanel" class="athlete-form-panel" style="display: none;">
+                    <h3>Add / Edit Athlete</h3>
+                    ${this.athleteList.renderForm()}
+                </div>
+                <h3>Selected Athletes <span id="selectedCount">${this.formatSelectedCount(selectedAthletes)}</span></h3>
                 <button id="clearAllAthletes" onclick="athleteSearch.clearAllAthletes()">Clear All Athletes</button>
                 <br /><br />
                 <ul id="selectedAthletes" class="compact-list"></ul>
@@ -44,6 +51,104 @@ export class AthleteSearch {
                 <button id="makeTeams">Make Teams</button>
             </div>
         `;
+    }
+
+    private formatSelectedCount(selectedAthletes: Athlete[]): string {
+        const checkedInCount = selectedAthletes.filter(a => a.checkedIn).length;
+        return `(${selectedAthletes.length} selected, ${checkedInCount} checked in)`;
+    }
+
+    async handleAddOrUpdateAthlete() {
+        const wasEditing = this.athleteList.isEditing();
+        const firstName = (document.getElementById('firstName') as HTMLInputElement).value.trim();
+        const lastName = (document.getElementById('lastName') as HTMLInputElement).value.trim();
+
+        await this.athleteList.addOrUpdateAthlete();
+
+        // addOrUpdateAthlete only clears the form on success; if validation or a
+        // duplicate check rejected the submission, leave the panel open to fix it.
+        const formWasCleared = (document.getElementById('firstName') as HTMLInputElement).value === '';
+        if (!formWasCleared) {
+            return;
+        }
+
+        this.updateAthleteList(this.athleteList);
+
+        if (!wasEditing) {
+            const newAthlete = this.athleteList.findAthlete(firstName, lastName);
+            if (newAthlete) {
+                this.addSelectedAthleteRef(newAthlete);
+            }
+        }
+
+        this.hideAthleteForm();
+    }
+
+    showAddAthleteForm() {
+        this.athleteList.cancelUpdate();
+        this.revealAthleteForm();
+    }
+
+    editSelectedAthlete(index: number) {
+        const selectedAthletes = this.sharedState.getSelectedAthletes();
+        const athlete = selectedAthletes[index];
+        if (athlete) {
+            this.athleteList.editAthleteByRef(athlete);
+            this.revealAthleteForm();
+        }
+    }
+
+    closeAthleteForm() {
+        this.athleteList.cancelUpdate();
+        this.hideAthleteForm();
+    }
+
+    private revealAthleteForm() {
+        const panel = document.getElementById('athleteFormPanel');
+        if (panel) {
+            panel.style.display = 'block';
+        }
+        const cancelButton = document.getElementById('cancelUpdate') as HTMLButtonElement | null;
+        if (cancelButton) {
+            cancelButton.hidden = false;
+        }
+    }
+
+    private hideAthleteForm() {
+        const panel = document.getElementById('athleteFormPanel');
+        if (panel) {
+            panel.style.display = 'none';
+        }
+    }
+
+    toggleCheckedIn(index: number) {
+        const selectedAthletes = this.sharedState.getSelectedAthletes();
+        const athlete = selectedAthletes[index];
+        if (!athlete) {
+            return;
+        }
+        athlete.checkedIn = !athlete.checkedIn;
+        this.sharedState.setSelectedAthletes(selectedAthletes);
+        this.updateSelectedList();
+    }
+
+    private addSelectedAthleteRef(athlete: Athlete) {
+        const selectedAthletes = this.sharedState.getSelectedAthletes();
+        if (this.isAthleteSelected(athlete, selectedAthletes)) {
+            return;
+        }
+        selectedAthletes.push(athlete);
+
+        selectedAthletes.sort((a: Athlete, b: Athlete) => {
+            const firstNameComparison = a.firstName.localeCompare(b.firstName);
+            if (firstNameComparison === 0) {
+                return a.lastName.localeCompare(b.lastName);
+            }
+            return firstNameComparison;
+        });
+
+        this.sharedState.setSelectedAthletes(selectedAthletes);
+        this.updateSelectedList();
     }
 
     searchAthletes() {
@@ -92,6 +197,11 @@ export class AthleteSearch {
 
     removeSelectedAthlete(index: number) {
         const selectedAthletes = this.sharedState.getSelectedAthletes();
+        const athlete = selectedAthletes[index];
+        if (athlete && !confirm(`Remove ${athlete.firstName} ${athlete.lastName} from the selected list?`)) {
+            return;
+        }
+
         selectedAthletes.splice(index, 1);
 
         selectedAthletes.sort((a: Athlete, b: Athlete) => {
@@ -143,6 +253,9 @@ export class AthleteSearch {
     }
 
     clearAllAthletes() {
+        if (!confirm('Remove all selected athletes?')) {
+            return;
+        }
         this.sharedState.setSelectedAthletes(([] as Athlete[]));
         this.updateSelectedList();
         this.clearSearchResults();
@@ -174,13 +287,19 @@ export class AthleteSearch {
         if (listElement && countElement) {
             listElement.innerHTML = selectedAthletes.map((athlete, index) =>
                 `<li>
+                    <label class="checkin-label" title="Checked in">
+                        <input type="checkbox" class="checkin-checkbox" ${athlete.checkedIn ? 'checked' : ''} onchange="athleteSearch.toggleCheckedIn(${index})" aria-label="Checked in" />
+                    </label>
                     <span class="athlete-info">
-                        ${athlete.firstName} ${athlete.lastName} (${athlete.gender}, Skill: ${athlete.skillRating})
+                        ${athlete.firstName} ${athlete.lastName}<br />(${athlete.gender}, Skill: ${athlete.skillRating})
                     </span>
-                    <button onclick="athleteSearch.removeSelectedAthlete(${index})" class="remove-btn">Delete</button>
+                    <span class="athlete-actions">
+                        <button onclick="athleteSearch.editSelectedAthlete(${index})" class="edit-btn">Edit</button>
+                        <button onclick="athleteSearch.removeSelectedAthlete(${index})" class="remove-btn">Remove</button>
+                    </span>
                 </li>`
             ).join('');
-            countElement.textContent = `(${selectedAthletes.length})`;
+            countElement.textContent = this.formatSelectedCount(selectedAthletes);
         }
     }
 
@@ -270,12 +389,16 @@ export class AthleteSearch {
             const aggregate = Array.isArray(team) ? team.reduce((sum, a) => sum + (Number((a as any).skillRating) || 0), 0) : 0;
             teamsHtml += `
                 <div class="team" data-team-index="${index}">
-                    <h4>Team ${index + 1} (${team.length})</h4>
+                    <h4>
+                        <span class="team-name">Team ${index + 1}</span>
+                        <span class="team-member-count">(${team.length} members)</span>
+                    </h4>
+
                     <ul class="team-list" data-team-index="${index}">
                         ${Array.isArray(team) ? team.map((ath, i) => `
                             <li draggable="true" class="team-member" data-team-index="${index}" data-athlete-index="${i}">
                                 <span class="drag-handle" aria-hidden="true" title="Drag">⋮⋮</span>
-                                <span class="member-label">${(ath.firstName || '')} ${(ath.lastName || '')}</span>
+                                <span class="member-label">${(ath.firstName || '')} ${(ath.lastName || '')}<br />
                                 <span class="member-meta">(${ath.gender || ''}, Skill: ${(ath as any).skillRating ?? ''})</span>
                             </li>
                         `).join('') : ''}
@@ -413,10 +536,10 @@ export class AthleteSearch {
         // Update selected athletes if any of them have been modified
         const selectedAthletes = this.sharedState.getSelectedAthletes();
         const updatedSelectedAthletes = selectedAthletes.map(selectedAthlete => {
-            const updatedAthlete = this.allAthletes.find(a => 
+            const updatedAthlete = this.allAthletes.find(a =>
                 a.firstName === selectedAthlete.firstName && a.lastName === selectedAthlete.lastName
             );
-            return updatedAthlete || selectedAthlete;
+            return updatedAthlete ? { ...updatedAthlete, checkedIn: selectedAthlete.checkedIn } : selectedAthlete;
         });
 
         updatedSelectedAthletes.sort((a: Athlete, b: Athlete) => {

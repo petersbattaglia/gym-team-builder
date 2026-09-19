@@ -33,6 +33,8 @@ function renderSearchPage() {
     contentElement.innerHTML = athleteSearch.render();
     athleteSearch.updateSelectedList();
     document.getElementById('makeTeams')!.addEventListener('click', () => athleteSearch.makeTeams());
+    document.getElementById('addOrUpdateAthlete')!.addEventListener('click', () => athleteSearch.handleAddOrUpdateAthlete());
+    document.getElementById('cancelUpdate')!.addEventListener('click', () => athleteSearch.closeAthleteForm());
 }
 
 function attachNavListeners() {
@@ -54,9 +56,15 @@ function loadSearchPage() {
     loadPage('buildTeams');
 }
 
+function setActiveNav(page: string) {
+    document.getElementById('athleteListPage')?.classList.toggle('active', page === 'athleteList');
+    document.getElementById('athleteSearchPage')?.classList.toggle('active', page === 'buildTeams');
+}
+
 function loadPage(page: string) {
     console.log('Loading page:', page);
     history.pushState({ page }, '', `#${page}`);
+    setActiveNav(page);
     switch (page) {
         case 'athleteList':
             renderAthletePage();

@@ -3,4 +3,5 @@ export interface Athlete {
     lastName: string;
     gender: string;
     skillRating: number;
+    checkedIn?: boolean;
 }

@@ -65,7 +65,7 @@ export class SharedState {
     updateAthlete(oldAthlete: Athlete, newAthlete: Athlete): void {
         this.selectedAthletes = this.selectedAthletes.map(athlete =>
             (athlete.firstName === oldAthlete.firstName && athlete.lastName === oldAthlete.lastName)
-                ? { ...newAthlete }
+                ? { ...newAthlete, checkedIn: athlete.checkedIn }
                 : athlete
         );
         localStorage.selectedAthletes = JSON.stringify(this.selectedAthletes);

@@ -1,5 +1,7 @@
 import { Athlete } from './Athlete';
 import { SharedState } from './SharedState';
+import { USE_MOCK_DATA } from '../mockConfig';
+import { mockAthletes } from '../mockAthletes';
 
 export class AthleteList {
     private athletes: Athlete[] = [];
@@ -12,6 +14,18 @@ export class AthleteList {
     }
 
     private async loadAthletes() {
+        if (USE_MOCK_DATA) {
+            this.athletes = [...mockAthletes].sort((a, b) => {
+                const firstNameComparison = a.firstName.localeCompare(b.firstName);
+                if (firstNameComparison === 0) {
+                    return a.lastName.localeCompare(b.lastName);
+                }
+                return firstNameComparison;
+            });
+            this.updateList();
+            return;
+        }
+
         try {
             const response = await fetch(this.sharedState.getEndpoint() + '/attendees', {
                 method: 'GET',
@@ -64,30 +78,36 @@ export class AthleteList {
         return `
             <div class="container">
                 <h2>Athlete List</h2>
-                <div>
-                    <input type="text" id="firstName" placeholder="First Name" />
-                    <input type="text" id="lastName" placeholder="Last Name" />
-                    <div class="radHolder">
-                    <input type="radio" id="genderM" name="gender" value="Male" class="radSelector" /> <label for="genderM" class="radLabel">Male</label>
-                    <input type="radio" id="genderF" name="gender" value="Female" class="radSelector" /> <label for="genderF" class="radLabel">Female</label>
-                    </div>
-                    <br />
-                    <div class="radHolder">
-                    ${Array.from({length: 5}, (_, i) => `<input type="radio" name="skillRating" id="skillRating${i+1}" value="${i+1}" class="radSelector" /> <label for="skillRating${i+1}" class="radLabel">${i+1}</label>`).join(' ')}
-                    </div>
-                    <br />
-                    <div class="radHolder">
-                    ${Array.from({length: 5}, (_, i) => `<input type="radio" name="skillRating" id="skillRating${i+6}" value="${i+6}" class="radSelector" /> <label for="skillRating${i+6}" class="radLabel">${i+6}</label>`).join(' ')}
-                    </div>
-                    <br />
-                    <center>
-                        <div style="display: inline;">
-                            <button id="addOrUpdateAthlete">Add Athlete</button>&nbsp;&nbsp;&nbsp;
-                            <button id="cancelUpdate" hidden="true">Cancel Update</button>
-                        </div>
-                    </center>
-                </div>
+                ${this.renderForm()}
                 <ul id="athleteList"></ul>
+            </div>
+        `;
+    }
+
+    renderForm() {
+        return `
+            <div>
+                <input type="text" id="firstName" placeholder="First Name" />
+                <input type="text" id="lastName" placeholder="Last Name" />
+                <div class="radHolder">
+                <input type="radio" id="genderM" name="gender" value="Male" class="radSelector" /> <label for="genderM" class="radLabel">Male</label>
+                <input type="radio" id="genderF" name="gender" value="Female" class="radSelector" /> <label for="genderF" class="radLabel">Female</label>
+                </div>
+                <br />
+                <div class="radHolder">
+                ${Array.from({length: 5}, (_, i) => `<input type="radio" name="skillRating" id="skillRating${i+1}" value="${i+1}" class="radSelector" /> <label for="skillRating${i+1}" class="radLabel">${i+1}</label>`).join(' ')}
+                </div>
+                <br />
+                <div class="radHolder">
+                ${Array.from({length: 5}, (_, i) => `<input type="radio" name="skillRating" id="skillRating${i+6}" value="${i+6}" class="radSelector" /> <label for="skillRating${i+6}" class="radLabel">${i+6}</label>`).join(' ')}
+                </div>
+                <br />
+                <center>
+                    <div style="display: inline;">
+                        <button id="addOrUpdateAthlete">Add Athlete</button>&nbsp;&nbsp;&nbsp;
+                        <button id="cancelUpdate" hidden="true">Cancel</button>
+                    </div>
+                </center>
             </div>
         `;
     }
@@ -135,26 +155,28 @@ export class AthleteList {
               });
 
             // Make POST request with updated athlete list
-            try {
-                const response = await fetch(this.sharedState.getEndpoint() + '/attendees', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ response: this.athletes }),
-                    mode: 'cors'
-                });
+            if (!USE_MOCK_DATA) {
+                try {
+                    const response = await fetch(this.sharedState.getEndpoint() + '/attendees', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ response: this.athletes }),
+                        mode: 'cors'
+                    });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    // Reload athletes
+                    await this.loadAthletes();
+                } catch (error) {
+                    console.error('Error updating athletes:', error);
+                    alert('Failed to update athletes. Please try again.');
                 }
-
-                // Reload athletes
-                await this.loadAthletes();
-            } catch (error) {
-                console.error('Error updating athletes:', error);
-                alert('Failed to update athletes. Please try again.');
             }
 
             this.updateList();
@@ -238,8 +260,18 @@ export class AthleteList {
     }
 
     async removeAthlete(index: number) {
+        const athlete = this.athletes[index];
+        if (athlete && !confirm(`Delete ${athlete.firstName} ${athlete.lastName}?`)) {
+            return;
+        }
+
         this.athletes.splice(index, 1);
-        
+
+        if (USE_MOCK_DATA) {
+            this.updateList();
+            return;
+        }
+
         // Make POST request with updated athlete list
         try {
             const response = await fetch(this.sharedState.getEndpoint() + '/attendees', {
@@ -285,5 +317,25 @@ export class AthleteList {
 
     getAthletes(): Athlete[] {
         return this.athletes;
+    }
+
+    isEditing(): boolean {
+        return this.editingIndex !== null;
+    }
+
+    findAthlete(firstName: string, lastName: string): Athlete | undefined {
+        return this.athletes.find(a =>
+            a.firstName.toLowerCase() === firstName.toLowerCase() &&
+            a.lastName.toLowerCase() === lastName.toLowerCase()
+        );
+    }
+
+    editAthleteByRef(athlete: Athlete) {
+        const index = this.athletes.findIndex(a =>
+            a.firstName === athlete.firstName && a.lastName === athlete.lastName
+        );
+        if (index !== -1) {
+            this.editAthlete(index);
+        }
     }
 }
